@@ -230,91 +230,89 @@ def setup_animation_keyframes(object_to_animate, locations, rotations, scales, n
         f += 1
 
 
-# ---------- Load objs ---------- #
-# set obj file to spot.obj in the meshes directory
-# we've also included some other .obj files, but feel free to download or create your own
-obj_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "meshes", "scene-sphere.obj")
-print(f"obj file: {obj_file}")
+if __name__ == "__main__":
+    # ---------- Load objs ---------- #
+    # set obj file to spot.obj in the meshes directory
+    # we've also included some other .obj files, but feel free to download or create your own
+    obj_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "meshes", "scene-sphere.obj")
+    print(f"obj file: {obj_file}")
 
+    # ---------- Scene Setup ---------- #
+    # set scene parameters and camera
+    scene = Scene()
+    cam = scene.cam
 
-# ---------- Scene Setup ---------- #
-# set scene parameters and camera
-scene = Scene()
-cam = scene.cam
+    # set up lights and plane
+    lights = scene.add_lights()
+    light = lights[0]
+    plane = scene.add_plane()
 
-# set up lights and plane
-lights = scene.add_lights()
-light = lights[0]
-plane = scene.add_plane()
+    # load in obj file and get mesh object
+    mesh = TriangleMesh(obj_file)
+    mesh = mesh.mesh
 
-# load in obj file and get mesh object
-mesh = TriangleMesh(obj_file)
-mesh = mesh.mesh
-
-# ---------- Render Mesh ---------- #
-# setup output file path
-output_path = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), "output", "renders", "sphere.png"
-)
-os.makedirs(os.path.dirname(output_path), exist_ok=True)
-
-print(f"output path: {output_path}")
-# edit output path as needed
-bpy.data.scenes["Scene"].render.filepath = output_path
-
-# debug flag
-debug = False
-
-
-# ---------- Animation ---------- #
-# animate flag
-animate = True
-
-# hard code locations
-n_frames = 20
-
-# example animations (moving either cam or mesh)
-# example camera animation
-# locations = zip([6.6]*n_frames, np.linspace(-6, 3, n_frames), [2.49]*n_frames)
-# rotations = zip([1.36]*n_frames, [0]*n_frames, [1.157]*n_frames)
-
-# example mesh animation
-# this uses np.linspace to generate linear animations
-# but you can replace this with your splines!
-rotations = zip([1.36] * n_frames, [0] * n_frames, np.linspace(1.157, 5, n_frames))
-locations = zip(
-    [0] * n_frames, np.linspace(0, -2, n_frames), np.linspace(0.7521, 1.5, n_frames)
-)
-scales = zip(
-    np.linspace(0.5, 1.5, n_frames),
-    np.linspace(0.5, 1.5, n_frames),
-    np.linspace(0.5, 1.5, n_frames),
-)
-
-
-if animate:
-    # setup_animation_keyframes(cam, locations, rotations, scales, n_frames) # for camera
-    setup_animation_keyframes(mesh, locations, rotations, scales, n_frames)  # for mesh
-    Path(
-        os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "output", "animation_renders"
-        )
-    ).mkdir(parents=True, exist_ok=True)
+    # ---------- Render Mesh ---------- #
+    # setup output file path
     output_path = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)),
-        "output",
-        "animation_renders",
-        "sphere.png",
-    )  # edit output path as needed
+        os.path.dirname(os.path.abspath(__file__)), "output", "renders", "sphere.png"
+    )
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+
+    print(f"output path: {output_path}")
+    # edit output path as needed
     bpy.data.scenes["Scene"].render.filepath = output_path
 
-# render
-if not debug:
-    bpy.ops.render.render(write_still=not animate, animation=animate)
-else:
-    print("debugging...")
-    bpy.ops.wm.save_as_mainfile(filepath="/tmp/debug.blend")
-    # To debug, run the following code. This will open up the debug file in blender.
-    # path/to/blender /tmp/debug.blend
-    # For me this looks like:
-    # /Applications/Blender.app/Contents/MacOS/blender /tmp/debug.blend
+    # debug flag
+    debug = False
+
+    # ---------- Animation ---------- #
+    # animate flag
+    animate = True
+
+    # hard code locations
+    n_frames = 20
+
+    # example animations (moving either cam or mesh)
+    # example camera animation
+    # locations = zip([6.6]*n_frames, np.linspace(-6, 3, n_frames), [2.49]*n_frames)
+    # rotations = zip([1.36]*n_frames, [0]*n_frames, [1.157]*n_frames)
+
+    # example mesh animation
+    # this uses np.linspace to generate linear animations
+    # but you can replace this with your splines!
+    rotations = zip([1.36] * n_frames, [0] * n_frames, np.linspace(1.157, 5, n_frames))
+    locations = zip(
+        [0] * n_frames, np.linspace(0, -2, n_frames), np.linspace(0.7521, 1.5, n_frames)
+    )
+    scales = zip(
+        np.linspace(0.5, 1.5, n_frames),
+        np.linspace(0.5, 1.5, n_frames),
+        np.linspace(0.5, 1.5, n_frames),
+    )
+
+    if animate:
+        # setup_animation_keyframes(cam, locations, rotations, scales, n_frames) # for camera
+        setup_animation_keyframes(mesh, locations, rotations, scales, n_frames)  # for mesh
+        Path(
+            os.path.join(
+                os.path.dirname(os.path.abspath(__file__)), "output", "animation_renders"
+            )
+        ).mkdir(parents=True, exist_ok=True)
+        output_path = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "output",
+            "animation_renders",
+            "sphere.png",
+        )  # edit output path as needed
+        bpy.data.scenes["Scene"].render.filepath = output_path
+
+    # render
+    if not debug:
+        bpy.ops.render.render(write_still=not animate, animation=animate)
+    else:
+        print("debugging...")
+        bpy.ops.wm.save_as_mainfile(filepath="/tmp/debug.blend")
+        # To debug, run the following code. This will open up the debug file in blender.
+        # path/to/blender /tmp/debug.blend
+        # For me this looks like:
+        # /Applications/Blender.app/Contents/MacOS/blender /tmp/debug.blend
