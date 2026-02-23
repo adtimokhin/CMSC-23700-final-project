@@ -9,17 +9,13 @@ class Pipeline:
     def __init__(self, head):
         self.head = head
 
-    def run(self, initial_data: dict = None) -> dict:
+    def run(self, initial_data: dict | None = None) -> dict:
         """Execute all nodes in sequence, passing data through the chain."""
         data = initial_data or {}
-        node = self.head
-        while node is not None:
-            print(f"[Pipeline] Running: {node.name}")
-            node.validate(data)
-            data = node.process(data)
-            node = node._next
-        print("[Pipeline] Done.")
-        return data
+        # Execution is now driven by the nodes themselves — each node calls
+        # the next one via run() at the end of its own run() (see Node.run).
+        # Pipeline just kicks off the chain from the head node.
+        return self.head.run(data)
 
     @staticmethod
     def save_manifest(data: dict, output_dir: str):
@@ -62,7 +58,6 @@ def _split_data(data: dict, json_out: dict, arrays_out: dict, prefix: str):
         elif isinstance(value, (int, float, str, bool, list, type(None))):
             json_out[key] = value
         else:
-            # Skip non-serializable values (e.g. raw audio data objects)
             pass
 
 

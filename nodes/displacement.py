@@ -25,13 +25,6 @@ class VertexDisplacementNode(Node):
         self.source = source
         self.amplitude = amplitude
 
-    def validate(self, data: dict):
-        if "objects" not in data or self.obj_name not in data["objects"]:
-            raise ValueError(
-                f"VertexDisplacementNode requires '{self.obj_name}' in data['objects']. "
-                "Add an ObjectTransformNode for this object first."
-            )
-
     def process(self, data: dict) -> dict:
         obj_data = data["objects"][self.obj_name]
         obj_file = obj_data["obj_file"]
@@ -40,14 +33,19 @@ class VertexDisplacementNode(Node):
         vertices, normals = _parse_obj_vertices_and_normals(obj_file)
         n_verts = len(vertices)
 
-        audio = data[self.source]  # shape (n_frames,)
+        audio = data[self.source]  # shape (n_frames,), values in [0, 1]
 
-        # offsets shape: (n_frames, n_verts, 3)
+        # offsets[f, v] = how far vertex v moves at frame f, as an (x, y, z) vector.
+        # Multiplying the normal by a scalar pushes the vertex outward (positive)
+        # or inward (negative) along the surface — keeps deformation smooth.
         offsets = np.zeros((n_frames, n_verts, 3))
         for f in range(n_frames):
+            # Every vertex gets the same audio-driven scale at a given frame,
+            # so the whole mesh "breathes" uniformly in and out.
             offsets[f] = normals * audio[f] * self.amplitude
 
         obj_data["vertex_offsets"] = offsets
+        # base_vertices is the rest pose; Blender adds offsets on top of these.
         obj_data["base_vertices"] = vertices
 
         return data
@@ -62,6 +60,7 @@ def _parse_obj_vertices_and_normals(obj_file: str):
             parts = line.strip().split()
             if not parts:
                 continue
+            # "v" lines define vertex positions; "vn" lines define per-vertex normals.
             if parts[0] == "v":
                 vertices.append([float(x) for x in parts[1:4]])
             elif parts[0] == "vn":
@@ -71,10 +70,14 @@ def _parse_obj_vertices_and_normals(obj_file: str):
 
     if len(normals) > 0:
         normals = np.array(normals)
+        # OBJ normal count doesn't always equal vertex count (normals can be
+        # per-face-corner). If they mismatch, fall back to treating vertex
+        # position as the outward direction — works well for convex meshes like spheres.
         if len(normals) != len(vertices):
-            # Fall back to position-based normals for convex meshes
             normals = vertices / (np.linalg.norm(vertices, axis=1, keepdims=True) + 1e-8)
     else:
+        # No normals in the file at all — same position-as-normal fallback.
+        # +1e-8 prevents division by zero for any vertex sitting at the origin.
         normals = vertices / (np.linalg.norm(vertices, axis=1, keepdims=True) + 1e-8)
 
     return vertices, normals

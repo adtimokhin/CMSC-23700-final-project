@@ -11,7 +11,7 @@ class MaterialNode(Node):
         source: str = "audio_volume",
         color_low=(0.0, 0.0, 1.0),
         color_high=(1.0, 0.0, 0.0),
-        name: str = None,
+        name: str | None = None,
     ):
         super().__init__(name)
         self.obj_name = obj_name
@@ -19,12 +19,6 @@ class MaterialNode(Node):
         self.color_low = np.array(color_low)
         self.color_high = np.array(color_high)
 
-    def validate(self, data: dict):
-        if "objects" not in data or self.obj_name not in data["objects"]:
-            raise ValueError(
-                f"MaterialNode requires '{self.obj_name}' in data['objects']. "
-                "Add an ObjectTransformNode for this object first."
-            )
 
     def process(self, data: dict) -> dict:
         n = data["n_frames"]
@@ -32,8 +26,12 @@ class MaterialNode(Node):
 
         colors = np.zeros((n, 3))
         for f in range(n):
+            # t is the audio value at this frame, in [0, 1].
+            # Linear interpolation between color_low (t=0) and color_high (t=1).
             t = audio[f]
             colors[f] = (1 - t) * self.color_low + t * self.color_high
 
+        # Store as a (n_frames, 3) array; render_from_manifest.py reads this
+        # and keyframes the Blender material's Base Color for each frame.
         data["objects"][self.obj_name]["material_colors"] = colors
         return data

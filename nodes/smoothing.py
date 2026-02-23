@@ -39,14 +39,20 @@ class SmoothingNode(Node):
                 continue
             signal = data[field]
 
-            # Downsample to control points
+            # Pick n_control_points evenly-spaced samples from the raw signal.
+            # These become the B-spline's control points. Fewer points = smoother
+            # curve because high-frequency jitter gets averaged away.
             indices = np.linspace(0, len(signal) - 1, self.n_control_points).astype(int)
             control_points = signal[indices].tolist()
 
-            # Build clamped knot vector
+            # Build a "clamped" knot vector: (d+1) copies of 0 at the start and
+            # (d+1) copies of 1 at the end force the spline to pass through the
+            # first and last control points rather than just approximating them.
             n_cp = self.n_control_points
             d = self.degree
             n_knots = n_cp + d + 1
+            # Interior knots fill the gap between the clamped ends. If the
+            # math gives 0 interior knots (happens when n_cp is small) we skip them.
             n_interior = n_knots - 2 * (d + 1)
             if n_interior > 0:
                 interior = np.linspace(0, 1, n_interior + 2)[1:-1].tolist()
@@ -56,7 +62,9 @@ class SmoothingNode(Node):
 
             spline = BSpline(knots, control_points, d)
 
-            # Evaluate at each frame
+            # Re-evaluate the spline at n_frames evenly-spaced positions in [0, 1].
+            # This gives us a smooth version of the original signal at the same
+            # length as the other per-frame arrays in data.
             xs = np.linspace(0, 1, n_frames)
             data[field] = np.array([spline.interp(x) for x in xs])
 

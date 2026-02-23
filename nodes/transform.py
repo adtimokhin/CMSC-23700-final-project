@@ -5,23 +5,6 @@ from nodes.base import Node
 class ObjectTransformNode(Node):
     """
     Maps audio features to object transforms (location, rotation, scale).
-
-    mapping example:
-    {
-        "scale": {
-            "source": "audio_volume",
-            "axis": [1, 1, 1],
-            "range": [0.5, 2.0],
-        },
-        "rotation_z": {
-            "source": "audio_bass",
-            "range": [0.0, 6.28],
-        },
-        "location_z": {
-            "source": "audio_onset",
-            "range": [0.0, 1.5],
-        },
-    }
     """
 
     def __init__(
@@ -45,19 +28,26 @@ class ObjectTransformNode(Node):
     def process(self, data: dict) -> dict:
         n = data["n_frames"]
 
+        # np.tile repeats the 1-D base vector n times to get an (n, 3) array,
+        # one row per frame. This is the "no animation" starting point.
         locations = np.tile(self.base_location, (n, 1))
         rotations = np.tile(self.base_rotation, (n, 1))
         scales = np.tile(self.base_scale, (n, 1))
 
         for prop, cfg in self.mapping.items():
-            source = data[cfg["source"]]  # shape (n_frames,), range [0,1]
+            source = data[cfg["source"]]  # shape (n_frames,), values in [0, 1]
             lo, hi = cfg["range"]
+            # Linearly map the [0, 1] audio signal into [lo, hi].
             values = lo + source * (hi - lo)
 
             if prop == "scale":
+                # axis_mask selects which axes get animated (e.g. [1,0,1] = X and Z only).
+                # The expression below leaves unmasked axes at their current value
+                # while replacing masked axes with the audio-driven value.
                 axis_mask = np.array(cfg.get("axis", [1, 1, 1]), dtype=float)
                 scales *= (1 - axis_mask[None, :]) + values[:, None] * axis_mask[None, :]
             elif prop.startswith("location_"):
+                # prop[-1] is "x", "y", or "z"; "xyz".index() converts it to 0/1/2.
                 idx = "xyz".index(prop[-1])
                 locations[:, idx] += values
             elif prop.startswith("rotation_"):
@@ -67,11 +57,14 @@ class ObjectTransformNode(Node):
         if "objects" not in data:
             data["objects"] = {}
 
+        # Store everything this object needs under its name so later nodes
+        # (MaterialNode, NoiseDisplacementNode, etc.) can find it by obj_name.
         data["objects"][self.obj_name] = {
             "obj_file": self.obj_file,
             "locations": locations,
             "rotations": rotations,
             "scales": scales,
+            # Default grey material; MaterialNode will overwrite material_colors.
             "material": {"r": 0.5, "g": 0.5, "b": 0.5, "a": 1.0},
         }
 

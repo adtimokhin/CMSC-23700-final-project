@@ -8,7 +8,6 @@ After rendering, run save_video.py to stitch frames into an MP4.
 """
 
 import os
-import subprocess
 
 from nodes.audio import AudioInputNode, AudioAnalysisNode
 from nodes.smoothing import SmoothingNode
@@ -26,26 +25,23 @@ BLENDER = "/Applications/Blender.app/Contents/MacOS/blender"
 AUDIO_FILE = os.path.join(PROJECT_DIR, "audio", "short.mp3")  # put your MP3 here
 FPS = 60  # low fps for fast iteration; increase for final render
 
-# ---------- Build the pipeline ---------- #
+################################################################################
+#                                   Nodes
+################################################################################
 
 audio = AudioInputNode(filepath=AUDIO_FILE, fps=FPS, start=62, end=63)
-
 analysis = AudioAnalysisNode()
-
 smooth = SmoothingNode(
     fields=["audio_bass", "audio_volume"],
     n_control_points=30,
     degree=3,
 )
-
 sphere_transform = ObjectTransformNode(
     obj_name="sphere",
     obj_file=os.path.join(PROJECT_DIR, "meshes", "scene-sphere.obj"),
     mapping={},
     base_location=(0, 0, 0),
 )
-
-# Noise-based vertex deformation driven by volume
 sphere_noise = NoiseDisplacementNode(
     obj_name="sphere",
     source="audio_volume",
@@ -54,8 +50,6 @@ sphere_noise = NoiseDisplacementNode(
     time_speed=1.0,
     octaves=3,
 )
-
-# Color driven by bass: blue when quiet, bright cyan/white when bass hits
 sphere_material = MaterialNode(
     obj_name="sphere",
     source="audio_bass",
@@ -66,38 +60,22 @@ sphere_material = MaterialNode(
 manifest_dir = os.path.join(PROJECT_DIR, "output", "manifests")
 export = ExportNode(output_dir=manifest_dir)
 
-# ---------- Chain nodes ---------- #
-audio >> analysis >> smooth >> sphere_transform >> sphere_noise >> sphere_material >> export
+################################################################################
+#                                   Chain
+################################################################################
 
-# ---------- Run pipeline ---------- #
+audio.then(analysis).\
+        then(smooth).\
+        then(sphere_transform).\
+        then(sphere_noise).\
+        then(sphere_material).\
+        then(export)
+
+################################################################################
+#                            Running the Pipeline
+################################################################################
+
 pipeline = Pipeline(head=audio)
 data = pipeline.run()
 
-print(f"\nPipeline complete: {data['n_frames']} frames at {data['fps']} fps")
-print(f"Duration: {data['duration']:.1f}s")
-print(f"Manifest saved to: {manifest_dir}")
-
-# ---------- Launch Blender render ---------- #
-# Clean old frames so save_video doesn't mix them with new ones
-import glob
-animation_renders_dir = os.path.join(PROJECT_DIR, "output", "animation_renders")
-for old_frame in glob.glob(os.path.join(animation_renders_dir, "*.png")):
-    os.remove(old_frame)
-
-blend_file = os.path.join(PROJECT_DIR, "blank.blend")
-render_script = os.path.join(PROJECT_DIR, "render_from_manifest.py")
-
-print(f"\nLaunching Blender render...")
-subprocess.run([
-    BLENDER, blend_file, "--background", "--python", render_script, "--", manifest_dir
-])
-
-# ---------- Stitch video ---------- #
-from save_video import save_video
-
-animation_renders_dir = os.path.join(PROJECT_DIR, "output", "animation_renders")
-os.makedirs(os.path.join(PROJECT_DIR, "output", "animations"), exist_ok=True)
-
-print(f"\nStitching video...")
-save_video(animation_renders_dir, fps=FPS, background_color=(0, 0, 0))
-print("Done! Video saved to output/animations/animation.mp4")
+print("Pipeline done. Run run_blender.py to render and stitch the video.")
