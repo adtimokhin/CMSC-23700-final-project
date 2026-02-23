@@ -22,8 +22,10 @@ class BSpline:
     def is_valid(self) -> bool:
         """Check if the B-spline configuration is valid."""
         if len(self.t) != len(self.c) + self.d + 1:
+            # n + d + 1 knots
             return False
         for i in range(len(self.t) - 1):
+            # Each knot must be more than previous
             if self.t[i] > self.t[i + 1]:
                 return False
         return True
@@ -36,9 +38,10 @@ class BSpline:
         if k == 1:
             if self.t[i] <= x < self.t[i + 1]:
                 return 1.0
-            if x == self.t[-1] and self.t[i] <= x <= self.t[i + 1]:
+            elif (x == self.t[-1]) and (self.t[i] <= x <= self.t[i + 1]):
                 return 1.0
-            return 0.0
+            else:
+                return 0.0
 
         left = 0.0
         denom_left = self.t[i + k - 1] - self.t[i]
@@ -54,6 +57,7 @@ class BSpline:
 
     def interp(self, x: float) -> float:
         """Evaluate the B-spline at input position x."""
+        # https://personal.math.vt.edu/embree/math5466/lecture10.pdf
         order = self.d + 1
         return sum(self.c[i] * self.bases(x, order, i) for i in range(len(self.c)))
 
@@ -65,4 +69,4 @@ if __name__ == "__main__":
     spline = BSpline(t, c, d)
     # now interpolate at some value
     value = 0.3
-    print(f"S({value}) = {spline.interp(value)}")
+    spline.interp(value)

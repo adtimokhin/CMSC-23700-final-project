@@ -1,0 +1,3 @@
+# Final Project - Plan Submission | Aleksandr (Sasha) Timokhin
+
+For my final project, I am building an audio-reactive mesh animation system inspired by TouchDesigner, where changes in an MP3 file (volume, bass, and other audio features) drive real-time modifications to a 3D mesh in synchrony with the music. The pipeline will parse audio into per-frame parameters that control mesh properties including vertex positions (via B-spline interpolation), color, and object transforms, with additional geometric operations such as Loop subdivision, Cotangent Laplacian smoothing, and Free-Form Deformation to produce interesting, music-synchronized animations.

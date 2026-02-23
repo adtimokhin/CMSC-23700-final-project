@@ -14,6 +14,7 @@ from nodes.audio import AudioInputNode, AudioAnalysisNode
 from nodes.smoothing import SmoothingNode
 from nodes.transform import ObjectTransformNode
 from nodes.material import MaterialNode
+from nodes.noise_displacement import NoiseDisplacementNode
 from nodes.export import ExportNode
 from pipeline.pipeline import Pipeline
 
@@ -23,11 +24,11 @@ PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
 # Update these paths for your setup
 BLENDER = "/Applications/Blender.app/Contents/MacOS/blender"
 AUDIO_FILE = os.path.join(PROJECT_DIR, "audio", "short.mp3")  # put your MP3 here
-FPS = 10  # low fps for fast iteration; increase for final render
+FPS = 60  # low fps for fast iteration; increase for final render
 
 # ---------- Build the pipeline ---------- #
 
-audio = AudioInputNode(filepath=AUDIO_FILE, fps=FPS, start=60, end=64)
+audio = AudioInputNode(filepath=AUDIO_FILE, fps=FPS, start=62, end=63)
 
 analysis = AudioAnalysisNode()
 
@@ -37,29 +38,36 @@ smooth = SmoothingNode(
     degree=3,
 )
 
-# Sphere moves up/down based on volume
 sphere_transform = ObjectTransformNode(
     obj_name="sphere",
     obj_file=os.path.join(PROJECT_DIR, "meshes", "scene-sphere.obj"),
-    mapping={
-        "location_z": {"source": "audio_volume", "range": [0.0, 1.5]},
-    },
-    base_location=(0, 0, 0.75),
+    mapping={},
+    base_location=(0, 0, 0),
+)
+
+# Noise-based vertex deformation driven by volume
+sphere_noise = NoiseDisplacementNode(
+    obj_name="sphere",
+    source="audio_volume",
+    amplitude=0.9,
+    noise_scale=2.0,
+    time_speed=1.0,
+    octaves=3,
 )
 
 # Color driven by bass: blue when quiet, bright cyan/white when bass hits
 sphere_material = MaterialNode(
     obj_name="sphere",
     source="audio_bass",
-    color_low=(0.05, 0.1, 0.4),   # dark blue when quiet
-    color_high=(0.2, 0.8, 1.0),   # bright cyan when bass hits
+    color_low=(0.0, 1.0, 0.2),   # dark blue when quiet
+    color_high=(1.0, 0.3, 0.1),   # bright cyan when bass hits
 )
 
 manifest_dir = os.path.join(PROJECT_DIR, "output", "manifests")
 export = ExportNode(output_dir=manifest_dir)
 
 # ---------- Chain nodes ---------- #
-audio >> analysis >> smooth >> sphere_transform >> sphere_material >> export
+audio >> analysis >> smooth >> sphere_transform >> sphere_noise >> sphere_material >> export
 
 # ---------- Run pipeline ---------- #
 pipeline = Pipeline(head=audio)

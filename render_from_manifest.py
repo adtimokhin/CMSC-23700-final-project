@@ -82,6 +82,12 @@ def main():
 
     # Scene setup (reuse existing)
     scene = Scene()
+    cam = scene.cam
+
+    # Re-aim camera at the origin, pulled back to fit the full sphere
+    cam.location = (8, 0, 1)
+    cam.rotation_euler = (1.5208, 0, 1.5708)  # nearly horizontal
+
     lights = scene.add_lights()
     plane = scene.add_plane()
 
